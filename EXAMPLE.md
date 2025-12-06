@@ -5,17 +5,19 @@ This document shows how to use the nested set package in your AdonisJS applicati
 ## Setup
 
 1. Install the package (when published):
+
 ```bash
-npm install @adonisjs/nested-set
+npm install adonisjs-nested-set
 ```
 
 2. Or use it locally by linking:
+
 ```bash
 cd adonis-nested-package
 npm link
 
 cd ../adonis
-npm link @adonisjs/nested-set
+npm link adonisjs-nested-set
 ```
 
 ## Example: Category Model
@@ -24,7 +26,7 @@ npm link @adonisjs/nested-set
 
 ```typescript
 import { BaseSchema } from '@adonisjs/lucid/schema'
-import { addNestedSetColumns } from '@adonisjs/nested-set'
+import { addNestedSetColumns } from 'adonisjs-nested-set'
 
 export default class extends BaseSchema {
   protected tableName = 'categories'
@@ -48,7 +50,7 @@ export default class extends BaseSchema {
 
 ```typescript
 import { BaseModel, column } from '@adonisjs/lucid/orm'
-import { applyNestedSet } from '@adonisjs/nested-set'
+import { applyNestedSet } from 'adonisjs-nested-set'
 
 export default class Category extends BaseModel {
   static table = 'categories'
@@ -83,13 +85,13 @@ const clothing = await Category.create({ name: 'Clothing' })
 await Category.fixTree()
 
 // Create child nodes
-const laptops = await Category.create({ 
-  name: 'Laptops', 
-  parentId: electronics.id 
+const laptops = await Category.create({
+  name: 'Laptops',
+  parentId: electronics.id,
 })
-const phones = await Category.create({ 
-  name: 'Phones', 
-  parentId: electronics.id 
+const phones = await Category.create({
+  name: 'Phones',
+  parentId: electronics.id,
 })
 await Category.fixTree()
 
@@ -143,10 +145,10 @@ export default class CategoriesController {
 
   async store({ request, response }: HttpContext) {
     const { name, parentId } = request.only(['name', 'parentId'])
-    
+
     const category = await Category.create({ name, parentId })
     await Category.fixTree()
-    
+
     return response.json(category)
   }
 
@@ -154,22 +156,21 @@ export default class CategoriesController {
     const category = await Category.findOrFail(params.id)
     const descendants = await category.descendants().exec()
     const tree = descendants.toTree()
-    
+
     return response.json({
       category,
-      tree
+      tree,
     })
   }
 
   async destroy({ params, response }: HttpContext) {
     const category = await Category.findOrFail(params.id)
-    
+
     // Deleting a node will also delete all descendants
     await category.delete()
     await Category.fixTree()
-    
+
     return response.noContent()
   }
 }
 ```
-

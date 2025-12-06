@@ -26,14 +26,13 @@ import { nestedSetTraitMethods, nestedSetStaticMethods } from './nested_set_trai
 export function applyNestedSet(Model: typeof BaseModel) {
   // Apply instance methods to model prototype
   Object.assign(Model.prototype, nestedSetTraitMethods)
-  
+
   // Apply static methods to model
   Object.assign(Model, nestedSetStaticMethods)
-  
+
   // Extend query builder
   extendQueryBuilder(Model)
-  
+
   // Extend model with tree methods
   extendModelWithTreeMethods(Model)
 }
-

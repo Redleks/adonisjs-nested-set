@@ -7,7 +7,7 @@ This package provides efficient tree operations using the Nested Set Model algor
 ## Installation
 
 ```bash
-npm install @adonisjs/nested-set
+npm install adonisjs-nested-set
 ```
 
 ## Usage
@@ -16,7 +16,7 @@ npm install @adonisjs/nested-set
 
 ```typescript
 import { BaseSchema } from '@adonisjs/lucid/schema'
-import { addNestedSetColumns } from '@adonisjs/nested-set'
+import { addNestedSetColumns } from 'adonisjs-nested-set'
 
 export default class extends BaseSchema {
   protected tableName = 'categories'
@@ -25,10 +25,10 @@ export default class extends BaseSchema {
     this.schema.createTable(this.tableName, (table) => {
       table.increments('id')
       table.string('name').notNullable()
-      
+
       // Add nested set columns (_lft, _rgt, parent_id)
       addNestedSetColumns(table)
-      
+
       table.timestamps(true, true)
     })
   }
@@ -43,7 +43,7 @@ export default class extends BaseSchema {
 
 ```typescript
 import { BaseModel, column } from '@adonisjs/lucid/orm'
-import { applyNestedSet } from '@adonisjs/nested-set'
+import { applyNestedSet } from 'adonisjs-nested-set'
 
 export default class Category extends BaseModel {
   static table = 'categories'
@@ -135,13 +135,13 @@ const treeStructure = subtree.toTree()
 const node = await Category.find(1)
 
 // Check node properties
-node.isRoot()        // Check if node is root
-node.isLeaf()        // Check if node is leaf
-node.isDescendantOf(other)  // Check if node is descendant
-node.isAncestorOf(other)    // Check if node is ancestor
-node.isChildOf(other)       // Check if node is child
-node.isSiblingOf(other)     // Check if node is sibling
-await node.getDepth()        // Get depth of node
+node.isRoot() // Check if node is root
+node.isLeaf() // Check if node is leaf
+node.isDescendantOf(other) // Check if node is descendant
+node.isAncestorOf(other) // Check if node is ancestor
+node.isChildOf(other) // Check if node is child
+node.isSiblingOf(other) // Check if node is sibling
+await node.getDepth() // Get depth of node
 ```
 
 #### Checking Consistency
@@ -188,8 +188,8 @@ const result4 = await Category.whereDescendantOrSelf(node).exec()
 - `Category.isBroken()` - Check if tree is broken
 - `Category.countErrors()` - Count errors in tree
 - `Category.fixTree()` - Fix tree structure
-- `Category.getLftName()` - Get left column name (default: '_lft')
-- `Category.getRgtName()` - Get right column name (default: '_rgt')
+- `Category.getLftName()` - Get left column name (default: '\_lft')
+- `Category.getRgtName()` - Get right column name (default: '\_rgt')
 - `Category.getParentIdName()` - Get parent ID column name (default: 'parent_id')
 
 ### Instance Methods
