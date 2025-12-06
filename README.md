@@ -1,6 +1,8 @@
 # AdonisJS Nested Set
 
-Nested set model implementation for AdonisJS, similar to [laravel-nestedset](https://github.com/lazychaser/laravel-nestedset) for Laravel.
+![license](https://img.shields.io/badge/license-MIT-brightGreen.svg)
+
+Nested set model implementation for [AdonisJS](https://adonisjs.com), similar to [laravel-nestedset](https://github.com/lazychaser/laravel-nestedset) for Laravel.
 
 This package provides efficient tree operations using the Nested Set Model algorithm.
 
