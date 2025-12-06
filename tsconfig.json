@@ -5,9 +5,11 @@
     "outDir": "./build",
     "lib": ["ES2020", "DOM"],
     "target": "ES2020",
-    "moduleResolution": "node",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "skipLibCheck": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true
-  }
+  },
+  "exclude": ["tests", "node_modules", "coverage"]
 }

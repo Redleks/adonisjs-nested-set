@@ -7,12 +7,12 @@
 |
 */
 
-import type { BaseModel } from '@adonisjs/lucid/orm'
+import type { LucidModel, LucidRow } from '@adonisjs/lucid/types/model'
 
 /**
  * Tree node with children
  */
-export interface TreeNode extends BaseModel {
+export interface TreeNode extends LucidRow {
   children?: TreeNode[]
   parent?: TreeNode | null
 }
@@ -20,7 +20,7 @@ export interface TreeNode extends BaseModel {
 /**
  * Convert flat collection to tree structure
  */
-export function toTree(nodes: BaseModel[], rootId: number | string | null = null): TreeNode[] {
+export function toTree(nodes: LucidRow[], rootId: number | string | null = null): TreeNode[] {
   const parentIdColumn = 'parentId' // Use camelCase for AdonisJS models
   const tree: TreeNode[] = []
   const nodeMap = new Map<number | string, TreeNode>()
@@ -29,13 +29,15 @@ export function toTree(nodes: BaseModel[], rootId: number | string | null = null
   for (const node of nodes) {
     const treeNode = node as TreeNode
     treeNode.children = []
-    nodeMap.set(node.id as number | string, treeNode)
+    const nodeId = node.$primaryKeyValue ?? node.$getAttribute('id')
+    nodeMap.set(nodeId as number | string, treeNode)
   }
 
   // Second pass: build tree structure
   for (const node of nodes) {
-    const treeNode = nodeMap.get(node.id as number | string)!
-    const parentId = node[parentIdColumn] as number | string | null
+    const nodeId = node.$primaryKeyValue ?? node.$getAttribute('id')
+    const treeNode = nodeMap.get(nodeId as number | string)!
+    const parentId = node.$getAttribute(parentIdColumn) as number | string | null
 
     if (parentId && nodeMap.has(parentId)) {
       const parent = nodeMap.get(parentId)!
@@ -55,20 +57,21 @@ export function toTree(nodes: BaseModel[], rootId: number | string | null = null
 /**
  * Convert tree to flat list (children immediately after parent)
  */
-export function toFlatTree(nodes: BaseModel[], rootId: number | string | null = null): BaseModel[] {
+export function toFlatTree(nodes: LucidRow[], rootId: number | string | null = null): LucidRow[] {
   const parentIdColumn = 'parentId' // Use camelCase for AdonisJS models
-  const result: BaseModel[] = []
-  const nodeMap = new Map<number | string, BaseModel>()
-  const childrenMap = new Map<number | string | null, BaseModel[]>()
+  const result: LucidRow[] = []
+  const nodeMap = new Map<number | string, LucidRow>()
+  const childrenMap = new Map<number | string | null, LucidRow[]>()
 
   // Build children map
   for (const node of nodes) {
-    const parentId = node[parentIdColumn] as number | string | null
+    const parentId = node.$getAttribute(parentIdColumn) as number | string | null
     if (!childrenMap.has(parentId)) {
       childrenMap.set(parentId, [])
     }
     childrenMap.get(parentId)!.push(node)
-    nodeMap.set(node.id as number | string, node)
+    const nodeId = node.$primaryKeyValue ?? node.$getAttribute('id')
+    nodeMap.set(nodeId as number | string, node)
   }
 
   // Recursively add nodes to result
@@ -76,7 +79,8 @@ export function toFlatTree(nodes: BaseModel[], rootId: number | string | null = 
     const children = childrenMap.get(parentId) || []
     for (const child of children) {
       result.push(child)
-      addNode(child.id as number | string)
+      const childId = child.$primaryKeyValue ?? child.$getAttribute('id')
+      addNode(childId as number | string)
     }
   }
 
@@ -87,12 +91,12 @@ export function toFlatTree(nodes: BaseModel[], rootId: number | string | null = 
 /**
  * Extend BaseModel with tree methods
  */
-export function extendModelWithTreeMethods(Model: typeof BaseModel) {
+export function extendModelWithTreeMethods(Model: LucidModel) {
   /**
    * Convert query results to tree
    */
-  Model.prototype.toTree = function (
-    this: BaseModel[],
+  ;(Model.prototype as any).toTree = function (
+    this: LucidRow[],
     rootId?: number | string | null
   ): TreeNode[] {
     return toTree(this, rootId)
@@ -101,10 +105,10 @@ export function extendModelWithTreeMethods(Model: typeof BaseModel) {
   /**
    * Convert query results to flat tree
    */
-  Model.prototype.toFlatTree = function (
-    this: BaseModel[],
+  ;(Model.prototype as any).toFlatTree = function (
+    this: LucidRow[],
     rootId?: number | string | null
-  ): BaseModel[] {
+  ): LucidRow[] {
     return toFlatTree(this, rootId)
   }
 }

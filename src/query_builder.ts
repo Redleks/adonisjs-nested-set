@@ -7,38 +7,42 @@
 |
 */
 
-import type { ModelQueryBuilderContract } from '@adonisjs/lucid/types/model'
-import type { BaseModel } from '@adonisjs/lucid/orm'
+import type { ModelQueryBuilderContract, LucidModel, LucidRow } from '@adonisjs/lucid/types/model'
 
 /**
  * Extend query builder with nested set methods
  */
-export function extendQueryBuilder(Model: typeof BaseModel) {
-  const lftColumn = (Model as typeof BaseModel & { getLftName(): string }).getLftName()
-  const rgtColumn = (Model as typeof BaseModel & { getRgtName(): string }).getRgtName()
-  const parentIdColumn = (
-    Model as typeof BaseModel & { getParentIdName(): string }
-  ).getParentIdName()
+export function extendQueryBuilder(Model: LucidModel) {
+  const lftColumn = (Model as LucidModel & { getLftName(): string }).getLftName()
+  const rgtColumn = (Model as LucidModel & { getRgtName(): string }).getRgtName()
+  const parentIdColumn = (Model as LucidModel & { getParentIdName(): string }).getParentIdName()
 
   /**
    * Get all roots
    */
-  Model.roots = function (): ModelQueryBuilderContract<BaseModel> {
+  ;(Model as LucidModel & { roots(): ModelQueryBuilderContract<LucidModel> }).roots = function (
+    this: LucidModel
+  ): ModelQueryBuilderContract<LucidModel> {
     return this.query().whereNull(parentIdColumn)
   }
 
   /**
    * Get ancestors of a node
    */
-  Model.ancestorsOf = function (
-    node: BaseModel | number | string
-  ): ModelQueryBuilderContract<BaseModel> {
+  ;(
+    Model as LucidModel & {
+      ancestorsOf(node: LucidRow | number | string): ModelQueryBuilderContract<LucidModel>
+    }
+  ).ancestorsOf = function (
+    this: LucidModel,
+    node: LucidRow | number | string
+  ): ModelQueryBuilderContract<LucidModel> {
     const query = this.query()
 
     if (typeof node === 'object' && node !== null) {
       return query
-        .where(lftColumn, '<', node[lftColumn] as number)
-        .where(rgtColumn, '>', node[rgtColumn] as number)
+        .where(lftColumn, '<', node.$getAttribute(lftColumn) as number)
+        .where(rgtColumn, '>', node.$getAttribute(rgtColumn) as number)
         .orderBy(lftColumn, 'asc')
     }
 
@@ -49,15 +53,20 @@ export function extendQueryBuilder(Model: typeof BaseModel) {
   /**
    * Get ancestors including self
    */
-  Model.ancestorsAndSelf = function (
-    node: BaseModel | number | string
-  ): ModelQueryBuilderContract<BaseModel> {
+  ;(
+    Model as LucidModel & {
+      ancestorsAndSelf(node: LucidRow | number | string): ModelQueryBuilderContract<LucidModel>
+    }
+  ).ancestorsAndSelf = function (
+    this: LucidModel,
+    node: LucidRow | number | string
+  ): ModelQueryBuilderContract<LucidModel> {
     const query = this.query()
 
     if (typeof node === 'object' && node !== null) {
       return query
-        .where(lftColumn, '<=', node[lftColumn] as number)
-        .where(rgtColumn, '>=', node[rgtColumn] as number)
+        .where(lftColumn, '<=', node.$getAttribute(lftColumn) as number)
+        .where(rgtColumn, '>=', node.$getAttribute(rgtColumn) as number)
         .orderBy(lftColumn, 'asc')
     }
 
@@ -67,15 +76,20 @@ export function extendQueryBuilder(Model: typeof BaseModel) {
   /**
    * Get descendants of a node
    */
-  Model.descendantsOf = function (
-    node: BaseModel | number | string
-  ): ModelQueryBuilderContract<BaseModel> {
+  ;(
+    Model as LucidModel & {
+      descendantsOf(node: LucidRow | number | string): ModelQueryBuilderContract<LucidModel>
+    }
+  ).descendantsOf = function (
+    this: LucidModel,
+    node: LucidRow | number | string
+  ): ModelQueryBuilderContract<LucidModel> {
     const query = this.query()
 
     if (typeof node === 'object' && node !== null) {
       return query
-        .where(lftColumn, '>', node[lftColumn] as number)
-        .where(rgtColumn, '<', node[rgtColumn] as number)
+        .where(lftColumn, '>', node.$getAttribute(lftColumn) as number)
+        .where(rgtColumn, '<', node.$getAttribute(rgtColumn) as number)
         .orderBy(lftColumn, 'asc')
     }
 
@@ -85,15 +99,20 @@ export function extendQueryBuilder(Model: typeof BaseModel) {
   /**
    * Get descendants including self
    */
-  Model.descendantsAndSelf = function (
-    node: BaseModel | number | string
-  ): ModelQueryBuilderContract<BaseModel> {
+  ;(
+    Model as LucidModel & {
+      descendantsAndSelf(node: LucidRow | number | string): ModelQueryBuilderContract<LucidModel>
+    }
+  ).descendantsAndSelf = function (
+    this: LucidModel,
+    node: LucidRow | number | string
+  ): ModelQueryBuilderContract<LucidModel> {
     const query = this.query()
 
     if (typeof node === 'object' && node !== null) {
       return query
-        .where(lftColumn, '>=', node[lftColumn] as number)
-        .where(rgtColumn, '<=', node[rgtColumn] as number)
+        .where(lftColumn, '>=', node.$getAttribute(lftColumn) as number)
+        .where(rgtColumn, '<=', node.$getAttribute(rgtColumn) as number)
         .orderBy(lftColumn, 'asc')
     }
 
@@ -103,14 +122,19 @@ export function extendQueryBuilder(Model: typeof BaseModel) {
   /**
    * Get siblings of a node
    */
-  Model.siblingsOf = function (
-    node: BaseModel | number | string
-  ): ModelQueryBuilderContract<BaseModel> {
+  ;(
+    Model as LucidModel & {
+      siblingsOf(node: LucidRow | number | string): ModelQueryBuilderContract<LucidModel>
+    }
+  ).siblingsOf = function (
+    this: LucidModel,
+    node: LucidRow | number | string
+  ): ModelQueryBuilderContract<LucidModel> {
     const query = this.query()
 
     if (typeof node === 'object' && node !== null) {
-      const parentId = node[parentIdColumn] as number | string | null
-      query.where('id', '!=', node.id)
+      const parentId = node.$getAttribute(parentIdColumn) as number | string | null
+      query.where('id', '!=', node.$primaryKeyValue ?? node.$getAttribute('id'))
 
       if (parentId) {
         query.where(parentIdColumn, parentId)
@@ -127,13 +151,18 @@ export function extendQueryBuilder(Model: typeof BaseModel) {
   /**
    * Get siblings including self
    */
-  Model.siblingsAndSelf = function (
-    node: BaseModel | number | string
-  ): ModelQueryBuilderContract<BaseModel> {
+  ;(
+    Model as LucidModel & {
+      siblingsAndSelf(node: LucidRow | number | string): ModelQueryBuilderContract<LucidModel>
+    }
+  ).siblingsAndSelf = function (
+    this: LucidModel,
+    node: LucidRow | number | string
+  ): ModelQueryBuilderContract<LucidModel> {
     const query = this.query()
 
     if (typeof node === 'object' && node !== null) {
-      const parentId = node[parentIdColumn] as number | string | null
+      const parentId = node.$getAttribute(parentIdColumn) as number | string | null
 
       if (parentId) {
         query.where(parentIdColumn, parentId)
@@ -150,43 +179,78 @@ export function extendQueryBuilder(Model: typeof BaseModel) {
   /**
    * Where ancestor of
    */
-  Model.whereAncestorOf = function (
-    node: BaseModel | number | string
-  ): ModelQueryBuilderContract<BaseModel> {
+  ;(
+    Model as LucidModel & {
+      whereAncestorOf(node: LucidRow | number | string): ModelQueryBuilderContract<LucidModel>
+    }
+  ).whereAncestorOf = function (
+    this: LucidModel & {
+      ancestorsOf(node: LucidRow | number | string): ModelQueryBuilderContract<LucidModel>
+    },
+    node: LucidRow | number | string
+  ): ModelQueryBuilderContract<LucidModel> {
     return this.ancestorsOf(node)
   }
 
   /**
    * Where ancestor or self
    */
-  Model.whereAncestorOrSelf = function (
-    node: BaseModel | number | string
-  ): ModelQueryBuilderContract<BaseModel> {
+  ;(
+    Model as LucidModel & {
+      whereAncestorOrSelf(node: LucidRow | number | string): ModelQueryBuilderContract<LucidModel>
+    }
+  ).whereAncestorOrSelf = function (
+    this: LucidModel & {
+      ancestorsAndSelf(node: LucidRow | number | string): ModelQueryBuilderContract<LucidModel>
+    },
+    node: LucidRow | number | string
+  ): ModelQueryBuilderContract<LucidModel> {
     return this.ancestorsAndSelf(node)
   }
 
   /**
    * Where descendant of
    */
-  Model.whereDescendantOf = function (
-    node: BaseModel | number | string
-  ): ModelQueryBuilderContract<BaseModel> {
+  ;(
+    Model as LucidModel & {
+      whereDescendantOf(node: LucidRow | number | string): ModelQueryBuilderContract<LucidModel>
+    }
+  ).whereDescendantOf = function (
+    this: LucidModel & {
+      descendantsOf(node: LucidRow | number | string): ModelQueryBuilderContract<LucidModel>
+    },
+    node: LucidRow | number | string
+  ): ModelQueryBuilderContract<LucidModel> {
     return this.descendantsOf(node)
   }
 
   /**
    * Where descendant or self
    */
-  Model.whereDescendantOrSelf = function (
-    node: BaseModel | number | string
-  ): ModelQueryBuilderContract<BaseModel> {
+  ;(
+    Model as LucidModel & {
+      whereDescendantOrSelf(node: LucidRow | number | string): ModelQueryBuilderContract<LucidModel>
+    }
+  ).whereDescendantOrSelf = function (
+    this: LucidModel & {
+      descendantsAndSelf(node: LucidRow | number | string): ModelQueryBuilderContract<LucidModel>
+    },
+    node: LucidRow | number | string
+  ): ModelQueryBuilderContract<LucidModel> {
     return this.descendantsAndSelf(node)
   }
 
   /**
    * Get nodes with depth
    */
-  Model.withDepth = function (as: string = 'depth'): ModelQueryBuilderContract<BaseModel> {
+  ;(
+    Model as LucidModel & {
+      withDepth(as?: string): ModelQueryBuilderContract<LucidModel>
+    }
+  ).withDepth = function (
+    this: LucidModel,
+    _as: string = 'depth'
+  ): ModelQueryBuilderContract<LucidModel> {
     const query = this.query()
     // This is a simplified version - full implementation would need subquery
     return query.select('*')
@@ -195,7 +259,20 @@ export function extendQueryBuilder(Model: typeof BaseModel) {
   /**
    * Check if tree is broken
    */
-  Model.isBroken = async function (): Promise<boolean> {
+  ;(
+    Model as LucidModel & {
+      isBroken(): Promise<boolean>
+    }
+  ).isBroken = async function (
+    this: LucidModel & {
+      countErrors(): Promise<{
+        oddness: number
+        duplicates: number
+        wrong_parent: number
+        missing_parent: number
+      }>
+    }
+  ): Promise<boolean> {
     const errors = await this.countErrors()
     const values = Object.keys(errors).map((key) => errors[key as keyof typeof errors])
     return values.some((count) => count > 0)
@@ -204,7 +281,16 @@ export function extendQueryBuilder(Model: typeof BaseModel) {
   /**
    * Count errors in tree
    */
-  Model.countErrors = async function (): Promise<{
+  ;(
+    Model as LucidModel & {
+      countErrors(): Promise<{
+        oddness: number
+        duplicates: number
+        wrong_parent: number
+        missing_parent: number
+      }>
+    }
+  ).countErrors = async function (this: LucidModel): Promise<{
     oddness: number
     duplicates: number
     wrong_parent: number
@@ -218,8 +304,8 @@ export function extendQueryBuilder(Model: typeof BaseModel) {
     const rgtValues = new Set<number>()
 
     for (const node of nodes) {
-      const lft = node[lftColumn] as number
-      const rgt = node[rgtColumn] as number
+      const lft = node.$getAttribute(lftColumn) as number
+      const rgt = node.$getAttribute(rgtColumn) as number
 
       if (lft >= rgt) {
         oddness++
@@ -238,17 +324,17 @@ export function extendQueryBuilder(Model: typeof BaseModel) {
     let missingParent = 0
 
     for (const node of nodes) {
-      const parentId = node[parentIdColumn] as number | string | null
+      const parentId = node.$getAttribute(parentIdColumn) as number | string | null
 
       if (parentId) {
-        const parent = nodes.find((n) => n.id === parentId)
+        const parent = nodes.find((n) => (n.$primaryKeyValue ?? n.$getAttribute('id')) === parentId)
         if (!parent) {
           missingParent++
         } else {
-          const parentLft = parent[lftColumn] as number
-          const parentRgt = parent[rgtColumn] as number
-          const nodeLft = node[lftColumn] as number
-          const nodeRgt = node[rgtColumn] as number
+          const parentLft = parent.$getAttribute(lftColumn) as number
+          const parentRgt = parent.$getAttribute(rgtColumn) as number
+          const nodeLft = node.$getAttribute(lftColumn) as number
+          const nodeRgt = node.$getAttribute(rgtColumn) as number
 
           if (nodeLft <= parentLft || nodeRgt >= parentRgt) {
             wrongParent++
@@ -268,31 +354,36 @@ export function extendQueryBuilder(Model: typeof BaseModel) {
   /**
    * Fix tree structure
    */
-  Model.fixTree = async function (): Promise<void> {
+  ;(
+    Model as LucidModel & {
+      fixTree(): Promise<void>
+    }
+  ).fixTree = async function (this: LucidModel): Promise<void> {
     const nodes = await this.query().orderBy(parentIdColumn, 'asc').orderBy('id', 'asc').exec()
 
     let counter = 1
 
     const buildTree = async (
       parentId: number | string | null,
-      nodeList: BaseModel[]
+      nodeList: LucidRow[]
     ): Promise<void> => {
       const children = nodeList.filter(
-        (node) => (node[parentIdColumn] as number | string | null) === parentId
+        (node) => (node.$getAttribute(parentIdColumn) as number | string | null) === parentId
       )
 
       for (const node of children) {
-        node[lftColumn] = counter++
+        node.$setAttribute(lftColumn, counter++)
         await node.save()
 
+        const nodeId = node.$primaryKeyValue ?? node.$getAttribute('id')
         const nodeChildren = nodeList.filter(
-          (n) => (n[parentIdColumn] as number | string | null) === node.id
+          (n) => (n.$getAttribute(parentIdColumn) as number | string | null) === nodeId
         )
         if (nodeChildren.length > 0) {
-          await buildTree(node.id, nodeList)
+          await buildTree(nodeId, nodeList)
         }
 
-        node[rgtColumn] = counter++
+        node.$setAttribute(rgtColumn, counter++)
         await node.save()
       }
     }

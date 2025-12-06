@@ -8,8 +8,7 @@
 |
 */
 
-import type { ModelQueryBuilderContract } from '@adonisjs/lucid/types/model'
-import type { BaseModel } from '@adonisjs/lucid/orm'
+import type { ModelQueryBuilderContract, LucidModel, LucidRow } from '@adonisjs/lucid/types/model'
 
 /**
  * Interface for nested set node
@@ -41,31 +40,33 @@ export const nestedSetTraitMethods = {
   /**
    * Check if node is root
    */
-  isRoot(this: BaseModel): boolean {
-    const Model = this.constructor as typeof BaseModel & { getParentIdName(): string }
+  isRoot(this: LucidRow): boolean {
+    const Model = this.constructor as LucidModel & { getParentIdName(): string }
     const parentIdColumn = Model.getParentIdName()
-    const parentId = this[parentIdColumn] as number | string | null | undefined
+    const parentId = this.$getAttribute(parentIdColumn) as number | string | null | undefined
     return parentId === null || parentId === undefined
   },
 
   /**
    * Check if node is leaf
    */
-  isLeaf(this: BaseModel): boolean {
-    const Model = this.constructor as typeof BaseModel & {
+  isLeaf(this: LucidRow): boolean {
+    const Model = this.constructor as LucidModel & {
       getLftName(): string
       getRgtName(): string
     }
     const lftColumn = Model.getLftName()
     const rgtColumn = Model.getRgtName()
-    return (this[rgtColumn] as number) - (this[lftColumn] as number) === 1
+    return (
+      (this.$getAttribute(rgtColumn) as number) - (this.$getAttribute(lftColumn) as number) === 1
+    )
   },
 
   /**
    * Check if node is descendant of another node
    */
-  isDescendantOf(this: BaseModel, other: BaseModel | number | string): boolean {
-    const Model = this.constructor as typeof BaseModel & {
+  isDescendantOf(this: LucidRow, other: LucidRow | number | string): boolean {
+    const Model = this.constructor as LucidModel & {
       getLftName(): string
       getRgtName(): string
     }
@@ -74,8 +75,8 @@ export const nestedSetTraitMethods = {
 
     if (typeof other === 'object' && other !== null) {
       return (
-        (this[lftColumn] as number) > (other[lftColumn] as number) &&
-        (this[rgtColumn] as number) < (other[rgtColumn] as number)
+        (this.$getAttribute(lftColumn) as number) > (other.$getAttribute(lftColumn) as number) &&
+        (this.$getAttribute(rgtColumn) as number) < (other.$getAttribute(rgtColumn) as number)
       )
     }
 
@@ -86,40 +87,43 @@ export const nestedSetTraitMethods = {
   /**
    * Check if node is ancestor of another node
    */
-  isAncestorOf(this: BaseModel, other: BaseModel): boolean {
-    const Model = this.constructor as typeof BaseModel & {
+  isAncestorOf(this: LucidRow, other: LucidRow): boolean {
+    const Model = this.constructor as LucidModel & {
       getLftName(): string
       getRgtName(): string
     }
     const lftColumn = Model.getLftName()
     const rgtColumn = Model.getRgtName()
     return (
-      (this[lftColumn] as number) < (other[lftColumn] as number) &&
-      (this[rgtColumn] as number) > (other[rgtColumn] as number)
+      (this.$getAttribute(lftColumn) as number) < (other.$getAttribute(lftColumn) as number) &&
+      (this.$getAttribute(rgtColumn) as number) > (other.$getAttribute(rgtColumn) as number)
     )
   },
 
   /**
    * Check if node is child of another node
    */
-  isChildOf(this: BaseModel, other: BaseModel): boolean {
-    const Model = this.constructor as typeof BaseModel & { getParentIdName(): string }
+  isChildOf(this: LucidRow, other: LucidRow): boolean {
+    const Model = this.constructor as LucidModel & { getParentIdName(): string }
     const parentIdColumn = Model.getParentIdName()
-    const parentId = this[parentIdColumn] as number | string | null | undefined
-    return parentId !== null && parentId !== undefined && parentId === other.id
+    const parentId = this.$getAttribute(parentIdColumn) as number | string | null | undefined
+    const otherId = other.$primaryKeyValue ?? other.$getAttribute('id')
+    return parentId !== null && parentId !== undefined && parentId === otherId
   },
 
   /**
    * Check if node is sibling of another node
    */
-  isSiblingOf(this: BaseModel, other: BaseModel): boolean {
-    const Model = this.constructor as typeof BaseModel & { getParentIdName(): string }
+  isSiblingOf(this: LucidRow, other: LucidRow): boolean {
+    const Model = this.constructor as LucidModel & { getParentIdName(): string }
     const parentIdColumn = Model.getParentIdName()
-    const thisParentId = this[parentIdColumn] as number | string | null | undefined
-    const otherParentId = other[parentIdColumn] as number | string | null | undefined
+    const thisParentId = this.$getAttribute(parentIdColumn) as number | string | null | undefined
+    const otherParentId = other.$getAttribute(parentIdColumn) as number | string | null | undefined
 
     // Can't be sibling if same node
-    if (this.id === other.id) {
+    const thisId = this.$primaryKeyValue ?? this.$getAttribute('id')
+    const otherId = other.$primaryKeyValue ?? other.$getAttribute('id')
+    if (thisId === otherId) {
       return false
     }
 
@@ -144,9 +148,9 @@ export const nestedSetTraitMethods = {
   /**
    * Get depth of the node
    */
-  async getDepth(this: BaseModel): Promise<number> {
-    const Model = this.constructor as typeof BaseModel & {
-      ancestorsOf(node: BaseModel | number | string): ModelQueryBuilderContract<BaseModel>
+  async getDepth(this: LucidRow): Promise<number> {
+    const Model = this.constructor as LucidModel & {
+      ancestorsOf(node: LucidRow | number | string): ModelQueryBuilderContract<LucidModel>
     }
 
     const ancestors = await Model.ancestorsOf(this).exec()
@@ -156,12 +160,12 @@ export const nestedSetTraitMethods = {
   /**
    * Get siblings query
    */
-  siblings(this: BaseModel): ModelQueryBuilderContract<BaseModel> {
-    const Model = this.constructor as typeof BaseModel & { getParentIdName(): string }
+  siblings(this: LucidRow): ModelQueryBuilderContract<LucidModel> {
+    const Model = this.constructor as LucidModel & { getParentIdName(): string }
     const parentIdColumn = Model.getParentIdName()
-    const parentId = this[parentIdColumn] as number | string | null
+    const parentId = this.$getAttribute(parentIdColumn) as number | string | null
 
-    const query = Model.query().where('id', '!=', this.id)
+    const query = Model.query().where('id', '!=', this.$primaryKeyValue ?? this.$getAttribute('id'))
 
     if (parentId) {
       query.where(parentIdColumn, parentId)
@@ -175,8 +179,8 @@ export const nestedSetTraitMethods = {
   /**
    * Get ancestors query
    */
-  ancestors(this: BaseModel): ModelQueryBuilderContract<BaseModel> {
-    const Model = this.constructor as typeof BaseModel & {
+  ancestors(this: LucidRow): ModelQueryBuilderContract<LucidModel> {
+    const Model = this.constructor as LucidModel & {
       getLftName(): string
       getRgtName(): string
     }
@@ -184,16 +188,16 @@ export const nestedSetTraitMethods = {
     const rgtColumn = Model.getRgtName()
 
     return Model.query()
-      .where(lftColumn, '<', this[lftColumn] as number)
-      .where(rgtColumn, '>', this[rgtColumn] as number)
+      .where(lftColumn, '<', this.$getAttribute(lftColumn) as number)
+      .where(rgtColumn, '>', this.$getAttribute(rgtColumn) as number)
       .orderBy(lftColumn, 'asc')
   },
 
   /**
    * Get descendants query
    */
-  descendants(this: BaseModel): ModelQueryBuilderContract<BaseModel> {
-    const Model = this.constructor as typeof BaseModel & {
+  descendants(this: LucidRow): ModelQueryBuilderContract<LucidModel> {
+    const Model = this.constructor as LucidModel & {
       getLftName(): string
       getRgtName(): string
     }
@@ -201,46 +205,46 @@ export const nestedSetTraitMethods = {
     const rgtColumn = Model.getRgtName()
 
     return Model.query()
-      .where(lftColumn, '>', this[lftColumn] as number)
-      .where(rgtColumn, '<', this[rgtColumn] as number)
+      .where(lftColumn, '>', this.$getAttribute(lftColumn) as number)
+      .where(rgtColumn, '<', this.$getAttribute(rgtColumn) as number)
       .orderBy(lftColumn, 'asc')
   },
 
   /**
    * Get children query
    */
-  children(this: BaseModel): ModelQueryBuilderContract<BaseModel> {
-    const Model = this.constructor as typeof BaseModel & { getParentIdName(): string }
+  children(this: LucidRow): ModelQueryBuilderContract<LucidModel> {
+    const Model = this.constructor as LucidModel & { getParentIdName(): string }
     const parentIdColumn = Model.getParentIdName()
 
-    return Model.query().where(parentIdColumn, this.id)
+    return Model.query().where(parentIdColumn, this.$primaryKeyValue ?? this.$getAttribute('id'))
   },
 
   /**
    * Get parent
    */
-  async parent(this: BaseModel): Promise<BaseModel | null> {
-    const Model = this.constructor as typeof BaseModel & { getParentIdName(): string }
+  async parent(this: LucidRow): Promise<LucidRow | null> {
+    const Model = this.constructor as LucidModel & { getParentIdName(): string }
     const parentIdColumn = Model.getParentIdName()
-    const parentId = this[parentIdColumn] as number | string | null
+    const parentId = this.$getAttribute(parentIdColumn) as number | string | null
 
     if (!parentId) {
       return null
     }
 
-    return Model.find(parentId)
+    return Model.find(parentId) as Promise<LucidRow | null>
   },
 
   /**
    * Make node a root
    */
-  async makeRoot(this: BaseModel): Promise<void> {
-    const Model = this.constructor as typeof BaseModel & {
+  async makeRoot(this: LucidRow): Promise<void> {
+    const Model = this.constructor as LucidModel & {
       getParentIdName(): string
       fixTree(): Promise<void>
     }
     const parentIdColumn = Model.getParentIdName()
-    this[parentIdColumn] = null
+    this.$setAttribute(parentIdColumn, null)
     await this.save()
     await Model.fixTree()
   },
@@ -248,14 +252,14 @@ export const nestedSetTraitMethods = {
   /**
    * Append node to parent
    */
-  async appendTo(this: BaseModel, parent: BaseModel | number | string): Promise<void> {
-    const Model = this.constructor as typeof BaseModel & {
+  async appendTo(this: LucidRow, parent: LucidRow | number | string): Promise<void> {
+    const Model = this.constructor as LucidModel & {
       getParentIdName(): string
       fixTree(): Promise<void>
     }
     const parentIdColumn = Model.getParentIdName()
 
-    let parentNode: BaseModel | null = null
+    let parentNode: LucidRow | null = null
     if (typeof parent === 'object' && parent !== null) {
       parentNode = parent
     } else {
@@ -266,7 +270,8 @@ export const nestedSetTraitMethods = {
       throw new Error('Parent node not found')
     }
 
-    this[parentIdColumn] = parentNode.id
+    const parentNodeId = parentNode.$primaryKeyValue ?? parentNode.$getAttribute('id')
+    this.$setAttribute(parentIdColumn, parentNodeId)
     await this.save()
     await Model.fixTree()
   },

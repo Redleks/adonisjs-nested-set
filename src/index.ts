@@ -18,12 +18,12 @@ export type { TreeNode } from './tree_builder.js'
 /**
  * Apply nested set functionality to a model
  */
-import type { BaseModel } from '@adonisjs/lucid/orm'
+import type { LucidModel } from '@adonisjs/lucid/types/model'
 import { extendQueryBuilder } from './query_builder.js'
 import { extendModelWithTreeMethods } from './tree_builder.js'
 import { nestedSetTraitMethods, nestedSetStaticMethods } from './nested_set_trait.js'
 
-export function applyNestedSet(Model: typeof BaseModel) {
+export function applyNestedSet(Model: LucidModel) {
   // Apply instance methods to model prototype
   Object.assign(Model.prototype, nestedSetTraitMethods)
 
