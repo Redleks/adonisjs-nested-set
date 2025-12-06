@@ -41,8 +41,13 @@
     "nested",
     "nestedset"
   ],
-  "author": "redleks@gmail.com",
+  "author": "Aleksey Kravchenko <redleks@gmail.com>",
   "license": "MIT",
+  "homepage": "https://github.com/Redleks/adonisjs-nested-set#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Redleks/adonisjs-nested-set.git"
+  },
   "devDependencies": {
     "@adonisjs/assembler": "^7.8.2",
     "@adonisjs/core": "^6.12.0",
