@@ -167,4 +167,88 @@ test.group('Nested Set Trait', () => {
     assert.isTrue(child2.isSiblingOf(child1))
     assert.isFalse(root.isSiblingOf(child1))
   })
+
+  test('isSiblingOf should return false for same node', ({ assert }) => {
+    const node = new TestCategorySimple()
+    node.id = 1
+    node.parentId = null
+    node._lft = 1
+    node._rgt = 2
+
+    assert.isFalse(node.isSiblingOf(node))
+  })
+
+  test('isDescendantOf should return false when other is ID', ({ assert }) => {
+    const node = new TestCategorySimple()
+    node.id = 2
+    node._lft = 5
+    node._rgt = 6
+
+    assert.isFalse(node.isDescendantOf(1))
+  })
+
+  test('siblings should be a function', ({ assert }) => {
+    const node = new TestCategorySimple()
+    node.id = 2
+    node.parentId = 1
+
+    assert.isFunction(node.siblings)
+  })
+
+  test('ancestors should be a function', ({ assert }) => {
+    const node = new TestCategorySimple()
+    node.id = 2
+    node._lft = 5
+    node._rgt = 6
+
+    assert.isFunction(node.ancestors)
+  })
+
+  test('descendants should be a function', ({ assert }) => {
+    const node = new TestCategorySimple()
+    node.id = 1
+    node._lft = 1
+    node._rgt = 10
+
+    assert.isFunction(node.descendants)
+  })
+
+  test('children should be a function', ({ assert }) => {
+    const node = new TestCategorySimple()
+    node.id = 1
+
+    assert.isFunction(node.children)
+  })
+
+  test('isRoot should return true when parentId is undefined', ({ assert }) => {
+    const root = new TestCategorySimple()
+    root.name = 'Root'
+    // parentId is undefined (not set)
+    root._lft = 1
+    root._rgt = 2
+
+    assert.isTrue(root.isRoot())
+  })
+
+  test('isChildOf should return false when parentId is null', ({ assert }) => {
+    const root = new TestCategorySimple()
+    root.id = 1
+    root.parentId = null
+
+    const other = new TestCategorySimple()
+    other.id = 2
+
+    assert.isFalse(root.isChildOf(other))
+  })
+
+  test('isChildOf should return false when parentId is undefined', ({ assert }) => {
+    const root = new TestCategorySimple()
+    root.id = 1
+    // parentId is undefined
+
+    const other = new TestCategorySimple()
+    other.id = 2
+
+    assert.isFalse(root.isChildOf(other))
+  })
 })
