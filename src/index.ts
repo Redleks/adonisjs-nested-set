@@ -23,7 +23,7 @@ import { extendQueryBuilder } from './query_builder.js'
 import { extendModelWithTreeMethods } from './tree_builder.js'
 import { nestedSetTraitMethods, nestedSetStaticMethods } from './nested_set_trait.js'
 
-export function applyNestedSet(Model: LucidModel) {
+export function applyNestedSet<T extends LucidModel>(Model: T): T {
   // Apply instance methods to model prototype
   Object.assign(Model.prototype, nestedSetTraitMethods)
 
@@ -31,8 +31,10 @@ export function applyNestedSet(Model: LucidModel) {
   Object.assign(Model, nestedSetStaticMethods)
 
   // Extend query builder
-  extendQueryBuilder(Model)
+  extendQueryBuilder(Model as LucidModel)
 
   // Extend model with tree methods
-  extendModelWithTreeMethods(Model)
+  extendModelWithTreeMethods(Model as LucidModel)
+
+  return Model
 }
