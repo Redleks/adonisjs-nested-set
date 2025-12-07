@@ -51,8 +51,9 @@ export default class extends BaseSchema {
 ```typescript
 import { BaseModel, column } from '@adonisjs/lucid/orm'
 import { applyNestedSet } from 'adonisjs-nested-set'
+import type { NestedSetQueryBuilderMethods } from 'adonisjs-nested-set'
 
-export default class Category extends BaseModel {
+class Category extends BaseModel {
   static table = 'categories'
 
   @column({ isPrimary: true })
@@ -71,7 +72,11 @@ export default class Category extends BaseModel {
   declare _rgt: number
 }
 
+// Apply nested set functionality to the model
 applyNestedSet(Category)
+
+// Export with proper typing for TypeScript autocomplete
+export default Category as typeof Category & NestedSetQueryBuilderMethods
 ```
 
 ### Usage Examples

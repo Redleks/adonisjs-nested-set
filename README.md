@@ -46,8 +46,9 @@ export default class extends BaseSchema {
 ```typescript
 import { BaseModel, column } from '@adonisjs/lucid/orm'
 import { applyNestedSet } from 'adonisjs-nested-set'
+import type { NestedSetQueryBuilderMethods } from 'adonisjs-nested-set'
 
-export default class Category extends BaseModel {
+class Category extends BaseModel {
   static table = 'categories'
 
   @column({ isPrimary: true })
@@ -66,9 +67,15 @@ export default class Category extends BaseModel {
   declare _rgt: number
 }
 
-// Apply nested set functionality
+// Apply nested set functionality to the model
 applyNestedSet(Category)
+
+// Export with proper typing for TypeScript autocomplete
+// This ensures all nested set methods are visible in your IDE
+export default Category as typeof Category & NestedSetQueryBuilderMethods
 ```
+
+> **Note:** The intersection type `typeof Category & NestedSetQueryBuilderMethods` is optional but recommended for better TypeScript autocomplete support. It makes all nested set methods (like `roots()`, `ancestorsOf()`, etc.) visible when you type `Category.` in your IDE.
 
 ### 3. Use in Your Code
 

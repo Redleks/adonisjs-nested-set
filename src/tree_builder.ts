@@ -12,7 +12,7 @@ import type { LucidModel, LucidRow } from '@adonisjs/lucid/types/model'
 /**
  * Tree node with children
  */
-export interface TreeNode extends LucidRow {
+export interface TreeNode extends Omit<LucidRow, 'children' | 'parent'> {
   children?: TreeNode[]
   parent?: TreeNode | null
 }
@@ -27,8 +27,7 @@ export function toTree(nodes: LucidRow[], rootId: number | string | null = null)
 
   // First pass: create map of all nodes
   for (const node of nodes) {
-    const treeNode = node as TreeNode
-    treeNode.children = []
+    const treeNode = { ...node, children: [] } as unknown as TreeNode
     const nodeId = node.$primaryKeyValue ?? node.$getAttribute('id')
     nodeMap.set(nodeId as number | string, treeNode)
   }
