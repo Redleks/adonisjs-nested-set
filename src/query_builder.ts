@@ -8,11 +8,23 @@
 */
 
 import type { ModelQueryBuilderContract, LucidModel, LucidRow } from '@adonisjs/lucid/types/model'
+import { addTreeMethodsToArray } from './tree_builder.js'
 
 /**
  * Extend query builder with nested set methods
  */
 export function extendQueryBuilder(Model: LucidModel) {
+  // Override query() to add tree methods to exec() results
+  const originalQuery = Model.query.bind(Model)
+  Model.query = function (this: LucidModel) {
+    const query = originalQuery.call(this)
+    const originalExec = query.exec.bind(query)
+    query.exec = async function () {
+      const results = await originalExec()
+      return addTreeMethodsToArray(results as LucidRow[])
+    }
+    return query
+  } as typeof Model.query
   const lftColumn = (Model as LucidModel & { getLftName(): string }).getLftName()
   const rgtColumn = (Model as LucidModel & { getRgtName(): string }).getRgtName()
   const parentIdColumn = (Model as LucidModel & { getParentIdName(): string }).getParentIdName()

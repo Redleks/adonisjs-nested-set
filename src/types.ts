@@ -11,6 +11,15 @@ import type { ModelQueryBuilderContract, LucidModel, LucidRow } from '@adonisjs/
 import type { TreeNode } from './tree_builder.js'
 
 /**
+ * Helper type to extract node identifier from various input types
+ */
+type NodeIdentifier<Model extends LucidModel> =
+  | InstanceType<Model>
+  | number
+  | string
+  | { $getAttribute(key: string): any; [key: string]: any }
+
+/**
  * Helper type for query builder with nested set methods
  */
 type NestedSetQueryBuilder<Model extends LucidModel> = ModelQueryBuilderContract<
@@ -19,68 +28,69 @@ type NestedSetQueryBuilder<Model extends LucidModel> = ModelQueryBuilderContract
 >
 
 /**
- * Interface for nested set query builder methods
+ * Interface for nested set query builder methods with generic model support
  */
-export interface NestedSetQueryBuilderMethods {
+export interface NestedSetQueryBuilderMethods<Model extends LucidModel = LucidModel> {
   /**
    * Get all root nodes
    */
-  roots(): NestedSetQueryBuilder<LucidModel>
+  roots(): NestedSetQueryBuilder<Model>
 
   /**
    * Get ancestors of a node
+   * Accepts model instance, ID (number/string), or any object with $getAttribute method
    */
-  ancestorsOf(node: LucidRow | number | string): NestedSetQueryBuilder<LucidModel>
+  ancestorsOf(node: NodeIdentifier<Model>): NestedSetQueryBuilder<Model>
 
   /**
    * Get ancestors including self
    */
-  ancestorsAndSelf(node: LucidRow | number | string): NestedSetQueryBuilder<LucidModel>
+  ancestorsAndSelf(node: NodeIdentifier<Model>): NestedSetQueryBuilder<Model>
 
   /**
    * Get descendants of a node
    */
-  descendantsOf(node: LucidRow | number | string): NestedSetQueryBuilder<LucidModel>
+  descendantsOf(node: NodeIdentifier<Model>): NestedSetQueryBuilder<Model>
 
   /**
    * Get descendants including self
    */
-  descendantsAndSelf(node: LucidRow | number | string): NestedSetQueryBuilder<LucidModel>
+  descendantsAndSelf(node: NodeIdentifier<Model>): NestedSetQueryBuilder<Model>
 
   /**
    * Get siblings of a node
    */
-  siblingsOf(node: LucidRow | number | string): NestedSetQueryBuilder<LucidModel>
+  siblingsOf(node: NodeIdentifier<Model>): NestedSetQueryBuilder<Model>
 
   /**
    * Get siblings including self
    */
-  siblingsAndSelf(node: LucidRow | number | string): NestedSetQueryBuilder<LucidModel>
+  siblingsAndSelf(node: NodeIdentifier<Model>): NestedSetQueryBuilder<Model>
 
   /**
    * Where ancestor of
    */
-  whereAncestorOf(node: LucidRow | number | string): NestedSetQueryBuilder<LucidModel>
+  whereAncestorOf(node: NodeIdentifier<Model>): NestedSetQueryBuilder<Model>
 
   /**
    * Where ancestor or self
    */
-  whereAncestorOrSelf(node: LucidRow | number | string): NestedSetQueryBuilder<LucidModel>
+  whereAncestorOrSelf(node: NodeIdentifier<Model>): NestedSetQueryBuilder<Model>
 
   /**
    * Where descendant of
    */
-  whereDescendantOf(node: LucidRow | number | string): NestedSetQueryBuilder<LucidModel>
+  whereDescendantOf(node: NodeIdentifier<Model>): NestedSetQueryBuilder<Model>
 
   /**
    * Where descendant or self
    */
-  whereDescendantOrSelf(node: LucidRow | number | string): NestedSetQueryBuilder<LucidModel>
+  whereDescendantOrSelf(node: NodeIdentifier<Model>): NestedSetQueryBuilder<Model>
 
   /**
    * Get nodes with depth
    */
-  withDepth(as?: string): NestedSetQueryBuilder<LucidModel>
+  withDepth(as?: string): NestedSetQueryBuilder<Model>
 
   /**
    * Check if tree is broken
@@ -216,12 +226,32 @@ export interface TreeCollectionMethods {
 /**
  * Type helper to add nested set methods to a model class
  */
-export type NestedSetModel<Model extends LucidModel> = Model & NestedSetQueryBuilderMethods
+export type NestedSetModel<Model extends LucidModel> = Model & NestedSetQueryBuilderMethods<Model>
 
 /**
  * Type helper to add nested set methods to a model instance
  */
 export type NestedSetRow<Row extends LucidRow> = Row & NestedSetInstanceMethods
+
+/**
+ * Helper type to properly export a model with nested set methods
+ * This preserves the instance type information for methods like find()
+ *
+ * @template ModelConstructor - The model class constructor (e.g., typeof Category)
+ */
+export type NestedSetModelExport<ModelConstructor extends LucidModel> = ModelConstructor &
+  NestedSetQueryBuilderMethods<ModelConstructor> & {
+    new (...args: any[]): InstanceType<ModelConstructor> & NestedSetInstanceMethods
+    find(
+      id: number | string
+    ): Promise<(InstanceType<ModelConstructor> & NestedSetInstanceMethods) | null>
+    findOrFail(
+      id: number | string
+    ): Promise<InstanceType<ModelConstructor> & NestedSetInstanceMethods>
+    create(values: any): Promise<InstanceType<ModelConstructor> & NestedSetInstanceMethods>
+    first(): Promise<(InstanceType<ModelConstructor> & NestedSetInstanceMethods) | null>
+    firstOrFail(): Promise<InstanceType<ModelConstructor> & NestedSetInstanceMethods>
+  }
 
 /**
  * Array type with tree methods
@@ -233,9 +263,11 @@ export interface TreeArray<T> extends Array<T> {
 
 /**
  * Module augmentation for LucidModel, LucidRow, and ModelQueryBuilderContract
+ * Note: These are base augmentations. For better type inference with specific models,
+ * use the NestedSetModel type helper or applyNestedSet return type.
  */
 declare module '@adonisjs/lucid/types/model' {
-  interface LucidModel extends NestedSetQueryBuilderMethods {}
+  interface LucidModel extends NestedSetQueryBuilderMethods<LucidModel> {}
   interface LucidRow extends NestedSetInstanceMethods {}
   interface ModelQueryBuilderContract<Model extends LucidModel, Result = InstanceType<Model>> {
     exec(): Promise<TreeArray<Result>>

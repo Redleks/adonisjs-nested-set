@@ -46,7 +46,6 @@ export default class extends BaseSchema {
 ```typescript
 import { BaseModel, column } from '@adonisjs/lucid/orm'
 import { applyNestedSet } from 'adonisjs-nested-set'
-import type { NestedSetQueryBuilderMethods } from 'adonisjs-nested-set'
 
 class Category extends BaseModel {
   static table = 'categories'
@@ -57,25 +56,24 @@ class Category extends BaseModel {
   @column()
   declare name: string
 
-  @column()
+  @column({ columnName: 'parent_id' })
   declare parentId: number | null
 
-  @column()
+  @column({ columnName: '_lft' })
   declare _lft: number
 
-  @column()
+  @column({ columnName: '_rgt' })
   declare _rgt: number
 }
 
 // Apply nested set functionality to the model
-applyNestedSet(Category)
+// The function returns properly typed model with all nested set methods
+const CategoryWithNestedSet = applyNestedSet(Category)
 
-// Export with proper typing for TypeScript autocomplete
-// This ensures all nested set methods are visible in your IDE
-export default Category as typeof Category & NestedSetQueryBuilderMethods
+// Export the typed model
+// TypeScript automatically infers all nested set methods with proper types
+export default CategoryWithNestedSet
 ```
-
-> **Note:** The intersection type `typeof Category & NestedSetQueryBuilderMethods` is optional but recommended for better TypeScript autocomplete support. It makes all nested set methods (like `roots()`, `ancestorsOf()`, etc.) visible when you type `Category.` in your IDE.
 
 ### 3. Use in Your Code
 
@@ -94,6 +92,7 @@ await Category.fixTree()
 const child2 = new Category()
 child2.name = 'Child 2'
 await child2.appendTo(root)
+await Category.fixTree()
 ```
 
 #### Retrieving Nodes
@@ -102,24 +101,24 @@ await child2.appendTo(root)
 // Get all roots
 const roots = await Category.roots().exec()
 
-// Get ancestors
-const ancestors = await Category.ancestorsOf(node).exec()
-const ancestorsAndSelf = await Category.ancestorsAndSelf(node).exec()
-
-// Get descendants
-const descendants = await Category.descendantsOf(node).exec()
-const descendantsAndSelf = await Category.descendantsAndSelf(node).exec()
-
-// Get siblings
-const siblings = await Category.siblingsOf(node).exec()
-const siblingsAndSelf = await Category.siblingsAndSelf(node).exec()
-
-// Instance methods
+// Get a node
 const node = await Category.find(1)
-const nodeAncestors = await node.ancestors().exec()
-const nodeDescendants = await node.descendants().exec()
-const nodeChildren = await node.children().exec()
-const nodeParent = await node.parent()
+
+if (node) {
+  // Static methods - called on Category class
+  const ancestors = await Category.ancestorsOf(node).exec()
+  const ancestorsAndSelf = await Category.ancestorsAndSelf(node).exec()
+  const descendants = await Category.descendantsOf(node).exec()
+  const descendantsAndSelf = await Category.descendantsAndSelf(node).exec()
+  const siblings = await Category.siblingsOf(node).exec()
+  const siblingsAndSelf = await Category.siblingsAndSelf(node).exec()
+
+  // Instance methods - called on node instance
+  const nodeAncestors = await node.ancestors().exec()
+  const nodeDescendants = await node.descendants().exec()
+  const nodeChildren = await node.children().exec()
+  const nodeParent = await node.parent()
+}
 ```
 
 #### Building Tree
@@ -143,14 +142,21 @@ const treeStructure = subtree.toTree()
 ```typescript
 const node = await Category.find(1)
 
-// Check node properties
-node.isRoot() // Check if node is root
-node.isLeaf() // Check if node is leaf
-node.isDescendantOf(other) // Check if node is descendant
-node.isAncestorOf(other) // Check if node is ancestor
-node.isChildOf(other) // Check if node is child
-node.isSiblingOf(other) // Check if node is sibling
-await node.getDepth() // Get depth of node
+if (node) {
+  // Check node properties
+  const isRoot = node.isRoot() // Check if node is root
+  const isLeaf = node.isLeaf() // Check if node is leaf
+
+  const other = await Category.find(2)
+  if (other) {
+    const isDescendant = node.isDescendantOf(other) // Check if node is descendant
+    const isAncestor = node.isAncestorOf(other) // Check if node is ancestor
+    const isChild = node.isChildOf(other) // Check if node is child
+    const isSibling = node.isSiblingOf(other) // Check if node is sibling
+  }
+
+  const depth = await node.getDepth() // Get depth of node
+}
 ```
 
 #### Checking Consistency
@@ -170,19 +176,23 @@ await Category.fixTree()
 #### Query Constraints
 
 ```typescript
-// Where ancestor of
-const result = await Category.whereAncestorOf(node).exec()
-const result2 = await Category.whereAncestorOrSelf(node).exec()
+const node = await Category.find(1)
 
-// Where descendant of
-const result3 = await Category.whereDescendantOf(node).exec()
-const result4 = await Category.whereDescendantOrSelf(node).exec()
+if (node) {
+  // Where ancestor of
+  const result = await Category.whereAncestorOf(node).exec()
+  const result2 = await Category.whereAncestorOrSelf(node).exec()
 
-// Get nodes with depth
-const nodesWithDepth = await Category.withDepth().exec()
-nodesWithDepth.forEach((node) => {
-  console.log(`Node ${node.name} is at depth ${node.$extras.depth}`)
-})
+  // Where descendant of
+  const result3 = await Category.whereDescendantOf(node).exec()
+  const result4 = await Category.whereDescendantOrSelf(node).exec()
+
+  // Get nodes with depth
+  const nodesWithDepth = await Category.withDepth().exec()
+  nodesWithDepth.forEach((node) => {
+    console.log(`Node ${node.name} is at depth ${node.$extras.depth}`)
+  })
+}
 ```
 
 #### Deleting Nodes
@@ -255,6 +265,7 @@ When you delete a node using `node.delete()`, all its descendants are automatica
 ### Column Names
 
 The package uses the following default column names:
+
 - `_lft` - Left boundary
 - `_rgt` - Right boundary
 - `parent_id` - Parent node ID (in database)
@@ -282,6 +293,42 @@ table.integer('_lft').nullable()
 table.integer('_rgt').nullable()
 table.integer('parent_id').nullable()
 ```
+
+## TypeScript Support
+
+### Type Inference
+
+The package provides full TypeScript support with automatic type inference - **no configuration needed!**
+
+1. **Static Methods**: The `applyNestedSet()` function returns a properly typed model. All static methods like `ancestorsOf()`, `descendantsOf()`, etc. automatically accept model instances without type assertions.
+
+2. **Instance Methods**: Instance methods are automatically typed via module augmentation for `LucidRow` (included in the package). Methods like `children()`, `isRoot()`, etc. work without any type assertions.
+
+3. **Query Results**: Methods like `find()`, `create()`, `first()`, etc. automatically return instances with nested set methods included in their types.
+
+### Example with Full Type Safety
+
+```typescript
+import Category from '#models/category'
+
+// Static methods work without type assertions - automatic type inference!
+const node = await Category.find(1)
+if (node) {
+  // ✅ All methods work without type assertions
+  const ancestors = await Category.ancestorsOf(node).exec()
+  const descendants = await Category.descendantsOf(node).exec()
+  const children = await node.children().exec()
+  const isRoot = node.isRoot()
+  const isLeaf = node.isLeaf()
+}
+```
+
+### Key Benefits
+
+- ✅ **Zero Configuration**: No need for declaration merging files or manual type assertions
+- ✅ **Full Type Safety**: All methods are properly typed with correct return types
+- ✅ **IntelliSense Support**: Full autocomplete for all nested set methods
+- ✅ **Type Inference**: TypeScript automatically infers correct types for model instances
 
 ## Testing
 

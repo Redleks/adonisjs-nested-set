@@ -26,8 +26,19 @@ export function toTree(nodes: LucidRow[], rootId: number | string | null = null)
   const nodeMap = new Map<number | string, TreeNode>()
 
   // First pass: create map of all nodes
+  // Preserve the original node object and add children/parent properties
   for (const node of nodes) {
-    const treeNode = { ...node, children: [] } as unknown as TreeNode
+    // Use the original node as base and add tree-specific properties
+    const treeNode = node as unknown as TreeNode
+    // Initialize children array using Object.defineProperty to ensure it's properly set
+    if (!('children' in treeNode) || !Array.isArray((treeNode as any).children)) {
+      Object.defineProperty(treeNode, 'children', {
+        value: [],
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      })
+    }
     const nodeId = node.$primaryKeyValue ?? node.$getAttribute('id')
     nodeMap.set(nodeId as number | string, treeNode)
   }
@@ -40,13 +51,45 @@ export function toTree(nodes: LucidRow[], rootId: number | string | null = null)
 
     if (parentId && nodeMap.has(parentId)) {
       const parent = nodeMap.get(parentId)!
-      if (!parent.children) {
+      // Ensure parent.children is an array
+      if (!parent.children || !Array.isArray(parent.children)) {
         parent.children = []
       }
       parent.children.push(treeNode)
       treeNode.parent = parent
-    } else if (parentId === rootId || (!parentId && rootId === null)) {
-      tree.push(treeNode)
+    }
+  }
+
+  // Third pass: add root nodes to tree
+  // If rootId is specified, only add that node and its descendants
+  // If rootId node doesn't exist, add nodes with parentId === rootId (orphaned nodes)
+  // Otherwise, add all nodes with null parentId
+  if (rootId !== null && rootId !== undefined) {
+    const rootNode = nodeMap.get(rootId)
+    if (rootNode) {
+      // Node with id === rootId exists, add it
+      tree.push(rootNode)
+    } else {
+      // Node with id === rootId doesn't exist, add orphaned nodes with parentId === rootId
+      for (const node of nodes) {
+        const nodeId = node.$primaryKeyValue ?? node.$getAttribute('id')
+        const treeNode = nodeMap.get(nodeId as number | string)!
+        const parentId = node.$getAttribute(parentIdColumn) as number | string | null
+
+        if (parentId === rootId) {
+          tree.push(treeNode)
+        }
+      }
+    }
+  } else {
+    for (const node of nodes) {
+      const nodeId = node.$primaryKeyValue ?? node.$getAttribute('id')
+      const treeNode = nodeMap.get(nodeId as number | string)!
+      const parentId = node.$getAttribute(parentIdColumn) as number | string | null
+
+      if (!parentId) {
+        tree.push(treeNode)
+      }
     }
   }
 
@@ -83,8 +126,41 @@ export function toFlatTree(nodes: LucidRow[], rootId: number | string | null = n
     }
   }
 
-  addNode(rootId)
+  // If rootId is specified, start from that node, otherwise start from null (root nodes)
+  if (rootId !== null && rootId !== undefined) {
+    // First add the root node itself
+    const rootNode = nodeMap.get(rootId)
+    if (rootNode) {
+      result.push(rootNode)
+      // Then add all its descendants
+      addNode(rootId)
+    }
+  } else {
+    addNode(null)
+  }
+
   return result
+}
+
+/**
+ * Add tree methods to an array
+ */
+export function addTreeMethodsToArray<T extends LucidRow[]>(
+  arr: T
+): T & {
+  toTree(rootId?: number | string | null): TreeNode[]
+  toFlatTree(rootId?: number | string | null): LucidRow[]
+} {
+  ;(arr as any).toTree = function (rootId?: number | string | null) {
+    return toTree(this, rootId)
+  }
+  ;(arr as any).toFlatTree = function (rootId?: number | string | null) {
+    return toFlatTree(this, rootId)
+  }
+  return arr as T & {
+    toTree(rootId?: number | string | null): TreeNode[]
+    toFlatTree(rootId?: number | string | null): LucidRow[]
+  }
 }
 
 /**
@@ -109,5 +185,15 @@ export function extendModelWithTreeMethods(Model: LucidModel) {
     rootId?: number | string | null
   ): LucidRow[] {
     return toFlatTree(this, rootId)
+  }
+
+  // Override all() static method to add tree methods to result
+  const ModelConstructor = Model as any
+  const originalAll = ModelConstructor.all
+  if (originalAll && typeof originalAll === 'function') {
+    ModelConstructor.all = async function (this: typeof Model) {
+      const results = await originalAll.call(this)
+      return addTreeMethodsToArray(results)
+    }
   }
 }

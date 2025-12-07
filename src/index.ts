@@ -17,9 +17,13 @@ export type { TreeNode } from './tree_builder.js'
 export type {
   NestedSetModel,
   NestedSetRow,
+  NestedSetModelExport,
   NestedSetQueryBuilderMethods,
+  NestedSetInstanceMethods,
   TreeArray,
 } from './types.js'
+
+import type { NestedSetQueryBuilderMethods, NestedSetInstanceMethods } from './types.js'
 
 /**
  * Apply nested set functionality to a model
@@ -30,18 +34,22 @@ import { extendModelWithTreeMethods } from './tree_builder.js'
 import { nestedSetTraitMethods, nestedSetStaticMethods } from './nested_set_trait.js'
 
 /**
- * Type for model constructor - accepts any class constructor
- * The model will be extended with nested set methods at runtime
- */
-type ModelConstructor = new (...args: any[]) => any
-
-/**
  * Apply nested set functionality to a model
  *
  * @param Model - The model class constructor (must extend BaseModel)
- * @returns The same model class with nested set methods added
+ * @returns The same model class with nested set methods added and proper typing
  */
-export function applyNestedSet<T extends ModelConstructor>(Model: T): T & LucidModel {
+export function applyNestedSet<Model extends LucidModel>(
+  Model: Model
+): Model &
+  NestedSetQueryBuilderMethods<Model> & {
+    new (...args: any[]): InstanceType<Model> & NestedSetInstanceMethods
+    find(id: number | string): Promise<(InstanceType<Model> & NestedSetInstanceMethods) | null>
+    findOrFail(id: number | string): Promise<InstanceType<Model> & NestedSetInstanceMethods>
+    create(values: any): Promise<InstanceType<Model> & NestedSetInstanceMethods>
+    first(): Promise<(InstanceType<Model> & NestedSetInstanceMethods) | null>
+    firstOrFail(): Promise<InstanceType<Model> & NestedSetInstanceMethods>
+  } {
   // Apply instance methods to model prototype
   Object.assign(Model.prototype, nestedSetTraitMethods)
 
@@ -89,5 +97,13 @@ export function applyNestedSet<T extends ModelConstructor>(Model: T): T & LucidM
   // Extend model with tree methods
   extendModelWithTreeMethods(Model as unknown as LucidModel)
 
-  return Model as T & LucidModel
+  return Model as Model &
+    NestedSetQueryBuilderMethods<Model> & {
+      new (...args: any[]): InstanceType<Model> & NestedSetInstanceMethods
+      find(id: number | string): Promise<(InstanceType<Model> & NestedSetInstanceMethods) | null>
+      findOrFail(id: number | string): Promise<InstanceType<Model> & NestedSetInstanceMethods>
+      create(values: any): Promise<InstanceType<Model> & NestedSetInstanceMethods>
+      first(): Promise<(InstanceType<Model> & NestedSetInstanceMethods) | null>
+      firstOrFail(): Promise<InstanceType<Model> & NestedSetInstanceMethods>
+    }
 }
