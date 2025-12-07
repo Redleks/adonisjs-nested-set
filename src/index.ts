@@ -45,6 +45,41 @@ export function applyNestedSet<T extends ModelConstructor>(Model: T): T & LucidM
   // Apply instance methods to model prototype
   Object.assign(Model.prototype, nestedSetTraitMethods)
 
+  // Override delete method to delete descendants
+  const originalDelete = Model.prototype.delete
+  Model.prototype.delete = async function (this: any) {
+    const ModelClass = this.constructor as LucidModel & {
+      getLftName(): string
+      getRgtName(): string
+      descendantsOf(node: any): any
+    }
+    const lftColumn = ModelClass.getLftName()
+    const rgtColumn = ModelClass.getRgtName()
+
+    // Refresh node to get latest _lft and _rgt values
+    if (this.$isPersisted) {
+      await this.refresh()
+    }
+
+    const nodeLft = this.$getAttribute(lftColumn) as number
+    const nodeRgt = this.$getAttribute(rgtColumn) as number
+
+    if (nodeLft && nodeRgt) {
+      // Delete all descendants (nodes where lft > nodeLft AND rgt < nodeRgt)
+      const descendants = ModelClass.descendantsOf(this)
+      const descendantsList = await descendants.exec()
+
+      // Delete descendants first (from bottom to top)
+      for (const descendant of descendantsList.reverse()) {
+        // Use original delete to avoid recursion
+        await originalDelete.call(descendant)
+      }
+    }
+
+    // Delete the node itself
+    return originalDelete.call(this)
+  }
+
   // Apply static methods to model
   Object.assign(Model, nestedSetStaticMethods)
 

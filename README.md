@@ -177,6 +177,22 @@ const result2 = await Category.whereAncestorOrSelf(node).exec()
 // Where descendant of
 const result3 = await Category.whereDescendantOf(node).exec()
 const result4 = await Category.whereDescendantOrSelf(node).exec()
+
+// Get nodes with depth
+const nodesWithDepth = await Category.withDepth().exec()
+nodesWithDepth.forEach((node) => {
+  console.log(`Node ${node.name} is at depth ${node.$extras.depth}`)
+})
+```
+
+#### Deleting Nodes
+
+```typescript
+// Delete a node - automatically deletes all descendants
+const node = await Category.find(1)
+await node.delete() // This will also delete all child nodes
+
+// The delete method is automatically overridden to perform cascade deletion
 ```
 
 ## API Reference
@@ -194,6 +210,7 @@ const result4 = await Category.whereDescendantOrSelf(node).exec()
 - `Category.whereAncestorOrSelf(node)` - Where ancestor or self
 - `Category.whereDescendantOf(node)` - Where descendant of
 - `Category.whereDescendantOrSelf(node)` - Where descendant or self
+- `Category.withDepth(as?)` - Get nodes with depth information (depth stored in `$extras.depth`)
 - `Category.isBroken()` - Check if tree is broken
 - `Category.countErrors()` - Count errors in tree
 - `Category.fixTree()` - Fix tree structure
@@ -217,6 +234,7 @@ const result4 = await Category.whereDescendantOrSelf(node).exec()
 - `node.parent()` - Get parent node
 - `node.makeRoot()` - Make node a root
 - `node.appendTo(parent)` - Append node to parent
+- `node.delete()` - Delete node and all its descendants (cascade delete)
 
 ### Collection Methods
 
@@ -227,6 +245,53 @@ const result4 = await Category.whereDescendantOrSelf(node).exec()
 
 - `addNestedSetColumns(table, lftColumn?, rgtColumn?, parentIdColumn?)` - Add nested set columns
 - `dropNestedSetColumns(table, lftColumn?, rgtColumn?, parentIdColumn?)` - Drop nested set columns
+
+## Important Notes
+
+### Cascade Deletion
+
+When you delete a node using `node.delete()`, all its descendants are automatically deleted as well. This is handled automatically by the package.
+
+### Column Names
+
+The package uses the following default column names:
+- `_lft` - Left boundary
+- `_rgt` - Right boundary
+- `parent_id` - Parent node ID (in database)
+- `parentId` - Parent node ID (in model, camelCase)
+
+Make sure to specify `columnName` in your model decorators if your database uses different naming:
+
+```typescript
+@column({ columnName: 'parent_id' })
+declare parentId: number | null
+
+@column({ columnName: '_lft' })
+declare _lft: number
+
+@column({ columnName: '_rgt' })
+declare _rgt: number
+```
+
+### SQLite Compatibility
+
+When using SQLite, use `integer` instead of `unsignedInteger` in migrations:
+
+```typescript
+table.integer('_lft').nullable()
+table.integer('_rgt').nullable()
+table.integer('parent_id').nullable()
+```
+
+## Testing
+
+The package includes comprehensive unit tests. Run them with:
+
+```bash
+npm test
+```
+
+For integration tests with real database operations use AdonisJS application.
 
 ## License
 

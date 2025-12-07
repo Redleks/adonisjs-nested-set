@@ -40,14 +40,16 @@ export function extendQueryBuilder(Model: LucidModel) {
     const query = this.query()
 
     if (typeof node === 'object' && node !== null) {
+      const nodeLft = node.$getAttribute(lftColumn) as number
+      const nodeRgt = node.$getAttribute(rgtColumn) as number
       return query
-        .where(lftColumn, '<', node.$getAttribute(lftColumn) as number)
-        .where(rgtColumn, '>', node.$getAttribute(rgtColumn) as number)
+        .where(lftColumn, '<', nodeLft)
+        .where(rgtColumn, '>', nodeRgt)
         .orderBy(lftColumn, 'asc')
     }
 
-    // If node is ID, we need to load it first
-    return query.whereRaw('1 = 0') // Return empty query for now
+    // If node is ID, return empty query - user should load node first
+    return query.whereRaw('1 = 0')
   }
 
   /**
@@ -64,9 +66,11 @@ export function extendQueryBuilder(Model: LucidModel) {
     const query = this.query()
 
     if (typeof node === 'object' && node !== null) {
+      const nodeLft = node.$getAttribute(lftColumn) as number
+      const nodeRgt = node.$getAttribute(rgtColumn) as number
       return query
-        .where(lftColumn, '<=', node.$getAttribute(lftColumn) as number)
-        .where(rgtColumn, '>=', node.$getAttribute(rgtColumn) as number)
+        .where(lftColumn, '<=', nodeLft)
+        .where(rgtColumn, '>=', nodeRgt)
         .orderBy(lftColumn, 'asc')
     }
 
@@ -87,9 +91,11 @@ export function extendQueryBuilder(Model: LucidModel) {
     const query = this.query()
 
     if (typeof node === 'object' && node !== null) {
+      const nodeLft = node.$getAttribute(lftColumn) as number
+      const nodeRgt = node.$getAttribute(rgtColumn) as number
       return query
-        .where(lftColumn, '>', node.$getAttribute(lftColumn) as number)
-        .where(rgtColumn, '<', node.$getAttribute(rgtColumn) as number)
+        .where(lftColumn, '>', nodeLft)
+        .where(rgtColumn, '<', nodeRgt)
         .orderBy(lftColumn, 'asc')
     }
 
@@ -110,9 +116,11 @@ export function extendQueryBuilder(Model: LucidModel) {
     const query = this.query()
 
     if (typeof node === 'object' && node !== null) {
+      const nodeLft = node.$getAttribute(lftColumn) as number
+      const nodeRgt = node.$getAttribute(rgtColumn) as number
       return query
-        .where(lftColumn, '>=', node.$getAttribute(lftColumn) as number)
-        .where(rgtColumn, '<=', node.$getAttribute(rgtColumn) as number)
+        .where(lftColumn, '>=', nodeLft)
+        .where(rgtColumn, '<=', nodeRgt)
         .orderBy(lftColumn, 'asc')
     }
 
@@ -189,8 +197,8 @@ export function extendQueryBuilder(Model: LucidModel) {
     },
     node: LucidRow | number | string
   ): ModelQueryBuilderContract<LucidModel> {
-    return this.ancestorsOf(node)
-  }
+    return this.ancestorsOf(node) as any
+  } as any
 
   /**
    * Where ancestor or self
@@ -205,8 +213,8 @@ export function extendQueryBuilder(Model: LucidModel) {
     },
     node: LucidRow | number | string
   ): ModelQueryBuilderContract<LucidModel> {
-    return this.ancestorsAndSelf(node)
-  }
+    return this.ancestorsAndSelf(node) as any
+  } as any
 
   /**
    * Where descendant of
@@ -221,8 +229,8 @@ export function extendQueryBuilder(Model: LucidModel) {
     },
     node: LucidRow | number | string
   ): ModelQueryBuilderContract<LucidModel> {
-    return this.descendantsOf(node)
-  }
+    return this.descendantsOf(node) as any
+  } as any
 
   /**
    * Where descendant or self
@@ -237,8 +245,8 @@ export function extendQueryBuilder(Model: LucidModel) {
     },
     node: LucidRow | number | string
   ): ModelQueryBuilderContract<LucidModel> {
-    return this.descendantsAndSelf(node)
-  }
+    return this.descendantsAndSelf(node) as any
+  } as any
 
   /**
    * Get nodes with depth
@@ -249,11 +257,18 @@ export function extendQueryBuilder(Model: LucidModel) {
     }
   ).withDepth = function (
     this: LucidModel,
-    _as: string = 'depth'
+    as: string = 'depth'
   ): ModelQueryBuilderContract<LucidModel> {
     const query = this.query()
-    // This is a simplified version - full implementation would need subquery
-    return query.select('*')
+    const tableName = (this as LucidModel).table
+
+    // Calculate depth using subquery that counts ancestors
+    // Depth = number of ancestors (nodes where lft < current.lft AND rgt > current.rgt)
+    const db = (query as any).client
+    const raw = db.raw(
+      `(SELECT COUNT(*) FROM ${tableName} AS ancestors WHERE ancestors.${lftColumn} < ${tableName}.${lftColumn} AND ancestors.${rgtColumn} > ${tableName}.${rgtColumn}) AS ${as}`
+    )
+    return query.select('*').select(raw as any)
   }
 
   /**

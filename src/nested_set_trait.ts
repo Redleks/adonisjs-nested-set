@@ -153,7 +153,8 @@ export const nestedSetTraitMethods = {
       ancestorsOf(node: LucidRow | number | string): ModelQueryBuilderContract<LucidModel>
     }
 
-    const ancestors = await Model.ancestorsOf(this).exec()
+    const ancestorsQuery = Model.ancestorsOf(this)
+    const ancestors = await ancestorsQuery.exec()
     return ancestors.length
   },
 
@@ -274,6 +275,36 @@ export const nestedSetTraitMethods = {
     this.$setAttribute(parentIdColumn, parentNodeId)
     await this.save()
     await Model.fixTree()
+  },
+
+  /**
+   * Delete node and all its descendants
+   */
+  async deleteWithDescendants(this: LucidRow): Promise<void> {
+    const Model = this.constructor as LucidModel & {
+      getLftName(): string
+      getRgtName(): string
+      descendantsOf(node: LucidRow | number | string): ModelQueryBuilderContract<LucidModel>
+    }
+    const lftColumn = Model.getLftName()
+    const rgtColumn = Model.getRgtName()
+
+    const nodeLft = this.$getAttribute(lftColumn) as number
+    const nodeRgt = this.$getAttribute(rgtColumn) as number
+
+    if (nodeLft && nodeRgt) {
+      // Delete all descendants (nodes where lft > nodeLft AND rgt < nodeRgt)
+      const descendantsQuery = Model.descendantsOf(this)
+      const descendantsList = await descendantsQuery.exec()
+
+      // Delete descendants first (from bottom to top)
+      for (const descendant of descendantsList.reverse()) {
+        await descendant.delete()
+      }
+    }
+
+    // Delete the node itself
+    await this.delete()
   },
 }
 
